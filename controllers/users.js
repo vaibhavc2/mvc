@@ -1,49 +1,59 @@
 import { User } from "../models/user.js";
 import bcrypt from 'bcrypt';
 import { sendCookie } from "../utils/features.js";
-import { invalidEmailPassword } from "../utils/data.js";
+import ErrorHandler from "../utils/error.js";
 
 
 // const getAllUsers = async (req, res) => {}
 
 
-const registerNewUser = async (req, res) => {
+// using try-catch error-handling: error-handling is IMPORTANT for async functions
+const registerNewUser = async (req, res, next) => {
 
-    const { name, email, password } = req.body;
+    try {
+        
+        const { name, email, password } = req.body;
 
-    let user = await User.findOne({ email });
+        let user = await User.findOne({ email });
 
-    if(user) return res.status(404).json({
-        success: false,
-        message: "User already exists",
-    });
+        if(user) return next(new ErrorHandler("User already exits", 404));
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+        const hashedPassword = await bcrypt.hash(password, 10);
 
-    user = await User.create({
-        name,
-        email,
-        password: hashedPassword
-    });
+        user = await User.create({
+            name,
+            email,
+            password: hashedPassword
+        });
 
-    sendCookie(user, res, "Registered Successfully", 201);
+        sendCookie(user, res, "Registered Successfully", 201);
+
+    } catch (error) {
+        next(error);
+    }
 
 }
 
 
 const loginUser = async (req, res, next) => {
 
-    const { email, password } = req.body;
+    try {
+        
+        const { email, password } = req.body;
 
-    let user = await User.findOne({ email }).select("+password"); // in user schema in models, we have set {select: false} in case of password, so we have to request for the password
+        let user = await User.findOne({ email }).select("+password"); // in user schema in models, we have set {select: false} in case of password, so we have to request for the password
 
-    if(!user) return res.status(404).json(invalidEmailPassword);
+        if(!user) return next(new ErrorHandler("Invalid Email or Password!", 400));
+        
+        const isMatch = await bcrypt.compare(password, user.password);
+        
+        if(!isMatch) return next(new ErrorHandler("Invalid Email or Password!", 400));
 
-    const isMatch = await bcrypt.compare(password, user.password);
+        sendCookie(user, res, `Welcome back, ${user.name}`, 200);
 
-    if(!isMatch) return res.status(404).json(invalidEmailPassword);
-
-    sendCookie(user, res, `Welcome back, ${user.name}`, 200);
+    } catch (error) {
+        next(error);
+    }
 
 }
 
