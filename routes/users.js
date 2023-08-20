@@ -16,7 +16,7 @@ router.post("/login", loginUser);
 router.post("/register", registerNewUser);
 
 
-router.get("/logout", logoutUser)
+router.get("/logout", logoutUser);
 
 
 router.get("/me", isAuthenticated, getMyProfile); // using isAuthenticated middleware for checking login status
